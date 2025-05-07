@@ -31,6 +31,7 @@ def read_books(
     return books
 
 
+# app/api/api_v1/endpoints/books.py (nur create_book aktualisieren)
 @router.post("/", response_model=Book)
 def create_book(
     *,
@@ -41,8 +42,25 @@ def create_book(
     """
     Erstellt ein neues Buch.
     """
-    book = crud_book.create_with_owner(db=db, obj_in=book_in, owner_id=current_user.id)
-    return book
+    try:
+        # Prüfen, ob ISBN bereits existiert
+        if book_in.isbn:
+            existing_book = crud_book.get_by_isbn(db=db, isbn=book_in.isbn)
+            if existing_book:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Ein Buch mit dieser ISBN existiert bereits"
+                )
+        
+        # Buch erstellen
+        book = crud_book.create_with_owner(db=db, obj_in=book_in, owner_id=current_user.id)
+        return book
+    except Exception as e:
+        # Bessere Fehlerbehandlung
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Erstellen des Buches: {str(e)}"
+        )
 
 
 @router.put("/{id}", response_model=Book)

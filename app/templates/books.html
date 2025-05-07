@@ -7,7 +7,7 @@
     <h1>Meine Bücher</h1>
     
     <div class="add-book">
-        <button id="add-book-btn">Neues Buch hinzufügen</button>
+        <button id="add-book-btn" onclick="showBookForm()">Neues Buch hinzufügen</button>
     </div>
     
     <div id="book-form" class="book-form hidden">
@@ -59,20 +59,37 @@
 </div>
 
 <script>
+    // Funktion zum Anzeigen des Formulars - direkt über onclick-Attribut verfügbar
+    function showBookForm() {
+        console.log("Button wurde geklickt");
+        document.getElementById('book-form').classList.remove('hidden');
+        // Alternative direkte Style-Anwendung als Fallback
+        document.getElementById('book-form').style.display = 'block';
+    }
+    
+    // Funktion zum Ausblenden des Formulars
+    function hideBookForm() {
+        console.log("Formular wird ausgeblendet");
+        document.getElementById('book-form').classList.add('hidden');
+        document.getElementById('new-book-form').reset();
+    }
+    
     // Diese Funktion wird beim Laden der Seite aufgerufen
     document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM geladen, initialisiere Event-Listener");
+        
         // Laden der Bücher
         fetchBooks();
         
-        // Event-Listener für das Hinzufügen eines Buches
+        // Event-Listener für das Hinzufügen eines Buches (als Fallback)
         document.getElementById('add-book-btn').addEventListener('click', function() {
-            document.getElementById('book-form').classList.remove('hidden');
+            console.log("Button wurde geklickt über Event-Listener");
+            showBookForm();
         });
         
         // Event-Listener für das Abbrechen des Formulars
         document.getElementById('cancel-btn').addEventListener('click', function() {
-            document.getElementById('book-form').classList.add('hidden');
-            document.getElementById('new-book-form').reset();
+            hideBookForm();
         });
         
         // Event-Listener für das Absenden des Formulars
@@ -85,7 +102,19 @@
     // Bücher vom Server abrufen
     async function fetchBooks() {
         try {
-            const response = await fetch('/api/v1/books');
+            console.log("Rufe Bücher vom Server ab");
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
+            const response = await fetch('/api/v1/books', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error('Fehler beim Abrufen der Bücher.');
             }
@@ -149,26 +178,37 @@
         const bookData = {
             title: form.title.value,
             author: form.author.value,
-            isbn: form.isbn.value,
+            isbn: form.isbn.value || null,
             publication_date: form.publication_date.value || null,
             description: form.description.value || null
         };
         
+        console.log("Versuche Buch hinzuzufügen:", bookData);
+        
         try {
+            // Token aus localStorage holen
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
             const response = await fetch('/api/v1/books', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(bookData)
             });
             
             if (!response.ok) {
-                throw new Error('Fehler beim Hinzufügen des Buches.');
+                // Versuche, eine detaillierte Fehlermeldung zu bekommen
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Fehler beim Hinzufügen des Buches. Status: ${response.status}`);
             }
             
             form.reset();
-            document.getElementById('book-form').classList.add('hidden');
+            hideBookForm();
             fetchBooks();
             alert('Buch erfolgreich hinzugefügt!');
         } catch (error) {
@@ -180,8 +220,16 @@
     // Buch löschen
     async function deleteBook(id) {
         try {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
             const response = await fetch(`/api/v1/books/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             });
             
             if (!response.ok) {
@@ -199,7 +247,17 @@
     // Buch bearbeiten
     async function editBook(id) {
         try {
-            const response = await fetch(`/api/v1/books/${id}`);
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
+            const response = await fetch(`/api/v1/books/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
             if (!response.ok) {
                 throw new Error('Fehler beim Abrufen des Buches.');
             }

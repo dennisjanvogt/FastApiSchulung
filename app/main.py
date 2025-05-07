@@ -92,8 +92,44 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
     )
 
+@app.get("/debug", include_in_schema=False)
+async def debug_info():
+    """
+    Debug-Informationen für Entwicklungszwecke.
+    Nicht in Produktion verwenden!
+    """
+    return {
+        "app_settings": {
+            "api_v1_str": settings.API_V1_STR,
+            "backend_cors_origins": settings.BACKEND_CORS_ORIGINS,
+            "sqlalchemy_database_uri": settings.SQLALCHEMY_DATABASE_URI.replace(
+                settings.FIRST_SUPERUSER_PASSWORD, "***"
+            ) if settings.FIRST_SUPERUSER_PASSWORD in settings.SQLALCHEMY_DATABASE_URI else settings.SQLALCHEMY_DATABASE_URI,
+        },
+        "environment": {
+            "python_version": platform.python_version(),
+            "system": platform.system(),
+        }
+    }
 
+# Vergessen Sie nicht, platform zu importieren:
+import platform
+
+
+# app/main.py (nur den letzten Teil aktualisieren)
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    
+    # Für Produktion
+    # host = "127.0.0.1"
+    
+    # Für Entwicklung (alle Interfaces)
+    host = "0.0.0.0"
+    
+    port = 8888
+    
+    print(f"Server startet auf http://{host}:{port}")
+    print(f"API-Dokumentation verfügbar unter http://{host}:{port}/docs")
+    
+    # Debug-Modus für Entwicklung
+    uvicorn.run(app, host=host, port=port, log_level="debug")

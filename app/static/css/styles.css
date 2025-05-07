@@ -172,9 +172,14 @@ button:hover {
     background-color: #c0392b;
 }
 
-/* Hilfeklassen */
+/* Hilfeklassen - Wichtig: display: none !important verwenden */
 .hidden {
-    display: none;
+    display: none !important;
+}
+
+/* Explizite Stile für das Buch-Formular, wenn es sichtbar ist */
+.book-form:not(.hidden) {
+    display: block;
 }
 
 /* Footer */
