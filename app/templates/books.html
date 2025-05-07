@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Bücher{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Meine Bücher</h1>
+    
+    <div class="add-book">
+        <button id="add-book-btn">Neues Buch hinzufügen</button>
+    </div>
+    
+    <div id="book-form" class="book-form hidden">
+        <h2>Buch hinzufügen</h2>
+        <form id="new-book-form">
+            <div class="form-group">
+                <label for="title">Titel</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="author">Autor</label>
+                <input type="text" id="author" name="author" required>
+            </div>
+            <div class="form-group">
+                <label for="isbn">ISBN</label>
+                <input type="text" id="isbn" name="isbn">
+            </div>
+            <div class="form-group">
+                <label for="publication_date">Veröffentlichungsdatum</label>
+                <input type="date" id="publication_date" name="publication_date">
+            </div>
+            <div class="form-group">
+                <label for="description">Beschreibung</label>
+                <textarea id="description" name="description"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit">Speichern</button>
+                <button type="button" id="cancel-btn">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="books-list">
+        <table>
+            <thead>
+                <tr>
+                    <th>Titel</th>
+                    <th>Autor</th>
+                    <th>ISBN</th>
+                    <th>Veröffentlichungsdatum</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="books-table-body">
+                <!-- Bücher werden hier per JavaScript eingefügt -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Diese Funktion wird beim Laden der Seite aufgerufen
+    document.addEventListener('DOMContentLoaded', function() {
+        // Laden der Bücher
+        fetchBooks();
+        
+        // Event-Listener für das Hinzufügen eines Buches
+        document.getElementById('add-book-btn').addEventListener('click', function() {
+            document.getElementById('book-form').classList.remove('hidden');
+        });
+        
+        // Event-Listener für das Abbrechen des Formulars
+        document.getElementById('cancel-btn').addEventListener('click', function() {
+            document.getElementById('book-form').classList.add('hidden');
+            document.getElementById('new-book-form').reset();
+        });
+        
+        // Event-Listener für das Absenden des Formulars
+        document.getElementById('new-book-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            addBook();
+        });
+    });
+    
+    // Bücher vom Server abrufen
+    async function fetchBooks() {
+        try {
+            const response = await fetch('/api/v1/books');
+            if (!response.ok) {
+                throw new Error('Fehler beim Abrufen der Bücher.');
+            }
+            
+            const books = await response.json();
+            displayBooks(books);
+        } catch (error) {
+            console.error('Fehler:', error);
+            alert(error.message);
+        }
+    }
+    
+    // Bücher in der Tabelle anzeigen
+    function displayBooks(books) {
+        const tableBody = document.getElementById('books-table-body');
+        tableBody.innerHTML = '';
+        
+        if (books.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="5">Keine Bücher gefunden.</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+        
+        books.forEach(book => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${book.title}</td>
+                <td>${book.author}</td>
+                <td>${book.isbn || '-'}</td>
+                <td>${book.publication_date || '-'}</td>
+                <td>
+                    <button class="edit-btn" data-id="${book.id}">Bearbeiten</button>
+                    <button class="delete-btn" data-id="${book.id}">Löschen</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+        
+        // Event-Listener für die Aktionsbuttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const bookId = this.getAttribute('data-id');
+                editBook(bookId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const bookId = this.getAttribute('data-id');
+                if (confirm('Möchtest du dieses Buch wirklich löschen?')) {
+                    deleteBook(bookId);
+                }
+            });
+        });
+    }
+    
+    // Neues Buch hinzufügen
+    async function addBook() {
+        const form = document.getElementById('new-book-form');
+        const bookData = {
+            title: form.title.value,
+            author: form.author.value,
+            isbn: form.isbn.value,
+            publication_date: form.publication_date.value || null,
+            description: form.description.value || null
+        };
+        
+        try {
+            const response = await fetch('/api/v1/books', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(bookData)
+            });
+            
+            if (!response.ok) {
+                throw new Error('Fehler beim Hinzufügen des Buches.');
+            }
+            
+            form.reset();
+            document.getElementById('book-form').classList.add('hidden');
+            fetchBooks();
+            alert('Buch erfolgreich hinzugefügt!');
+        } catch (error) {
+            console.error('Fehler:', error);
+            alert(error.message);
+        }
+    }
+    
+    // Buch löschen
+    async function deleteBook(id) {
+        try {
+            const response = await fetch(`/api/v1/books/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Fehler beim Löschen des Buches.');
+            }
+            
+            fetchBooks();
+            alert('Buch erfolgreich gelöscht!');
+        } catch (error) {
+            console.error('Fehler:', error);
+            alert(error.message);
+        }
+    }
+    
+    // Buch bearbeiten
+    async function editBook(id) {
+        try {
+            const response = await fetch(`/api/v1/books/${id}`);
+            if (!response.ok) {
+                throw new Error('Fehler beim Abrufen des Buches.');
+            }
+            
+            const book = await response.json();
+            
+            // Hier würde man ein Edit-Formular anzeigen und mit den Buchdaten befüllen
+            alert('Bearbeiten-Funktion noch nicht implementiert.');
+        } catch (error) {
+            console.error('Fehler:', error);
+            alert(error.message);
+        }
+    }
+</script>
+{% endblock %}

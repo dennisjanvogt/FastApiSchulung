@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Anmelden{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="login-form">
+        <h1>Anmelden</h1>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">E-Mail</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Passwort</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-actions">
+                <button type="submit">Anmelden</button>
+            </div>
+            <div class="form-message" id="error-message"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+            
+            // Zurücksetzen der Fehlermeldung
+            errorMessage.textContent = '';
+            
+            try {
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        'username': email,
+                        'password': password
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Anmeldung fehlgeschlagen. Bitte überprüfe deine Anmeldedaten.');
+                }
+                
+                const data = await response.json();
+                
+                // Token im Local Storage speichern
+                localStorage.setItem('access_token', data.access_token);
+                
+                // Weiterleitung zur Startseite
+                window.location.href = '/books';
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            }
+        });
+    });
+</script>
+{% endblock %}
