@@ -11,8 +11,9 @@
     </div>
     
     <div id="book-form" class="book-form hidden">
-        <h2>Buch hinzufügen</h2>
-        <form id="new-book-form">
+        <h2 id="form-title">Buch hinzufügen</h2>
+        <form id="book-form-element">
+            <input type="hidden" id="book-id" name="book-id" value="">
             <div class="form-group">
                 <label for="title">Titel</label>
                 <input type="text" id="title" name="title" required>
@@ -24,6 +25,7 @@
             <div class="form-group">
                 <label for="isbn">ISBN</label>
                 <input type="text" id="isbn" name="isbn">
+                <small class="form-hint">10 oder 13 Zeichen, nur Ziffern</small>
             </div>
             <div class="form-group">
                 <label for="publication_date">Veröffentlichungsdatum</label>
@@ -33,15 +35,17 @@
                 <label for="description">Beschreibung</label>
                 <textarea id="description" name="description"></textarea>
             </div>
+            <div class="form-message" id="form-error"></div>
             <div class="form-actions">
-                <button type="submit">Speichern</button>
+                <button type="submit" id="save-btn">Speichern</button>
                 <button type="button" id="cancel-btn">Abbrechen</button>
             </div>
         </form>
     </div>
     
     <div class="books-list">
-        <table>
+        <div id="loading-message">Bücher werden geladen...</div>
+        <table id="books-table" class="hidden">
             <thead>
                 <tr>
                     <th>Titel</th>
@@ -59,32 +63,90 @@
 </div>
 
 <script>
-    // Funktion zum Anzeigen des Formulars - direkt über onclick-Attribut verfügbar
-    function showBookForm() {
-        console.log("Button wurde geklickt");
+    // Globale Variable für den aktuellen Modus des Formulars (Hinzufügen oder Bearbeiten)
+    let formMode = 'add';
+    
+    // Funktion zum Anzeigen des Formulars
+    function showBookForm(mode = 'add') {
+        formMode = mode;
+        const formTitle = document.getElementById('form-title');
+        const form = document.getElementById('book-form-element');
+        const bookIdField = document.getElementById('book-id');
+        
+        // Formular zurücksetzen
+        form.reset();
+        document.getElementById('form-error').textContent = '';
+        
+        // Titel des Formulars anpassen
+        formTitle.textContent = mode === 'add' ? 'Buch hinzufügen' : 'Buch bearbeiten';
+        
+        // Bei "add" die book-id zurücksetzen
+        if (mode === 'add') {
+            bookIdField.value = '';
+        }
+        
+        // Formular anzeigen
         document.getElementById('book-form').classList.remove('hidden');
-        // Alternative direkte Style-Anwendung als Fallback
-        document.getElementById('book-form').style.display = 'block';
     }
     
     // Funktion zum Ausblenden des Formulars
     function hideBookForm() {
-        console.log("Formular wird ausgeblendet");
         document.getElementById('book-form').classList.add('hidden');
-        document.getElementById('new-book-form').reset();
+        document.getElementById('book-form-element').reset();
+        document.getElementById('form-error').textContent = '';
+    }
+    
+    // Funktion zur Formularvalidierung
+    function validateBookForm() {
+        const title = document.getElementById('title').value.trim();
+        const author = document.getElementById('author').value.trim();
+        const isbn = document.getElementById('isbn').value.trim();
+        const errorElement = document.getElementById('form-error');
+        
+        // Titel und Autor sind Pflichtfelder
+        if (!title) {
+            errorElement.textContent = 'Bitte gib einen Titel ein.';
+            return false;
+        }
+        if (!author) {
+            errorElement.textContent = 'Bitte gib einen Autor ein.';
+            return false;
+        }
+        
+        // ISBN-Validierung
+        if (isbn) {
+            if (!/^\d+$/.test(isbn)) {
+                errorElement.textContent = 'ISBN darf nur aus Ziffern bestehen.';
+                return false;
+            }
+            if (isbn.length !== 10 && isbn.length !== 13) {
+                errorElement.textContent = 'ISBN muss 10 oder 13 Zeichen lang sein.';
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    // Funktion zum Sammeln der Formulardaten
+    function getBookFormData() {
+        return {
+            title: document.getElementById('title').value.trim(),
+            author: document.getElementById('author').value.trim(),
+            isbn: document.getElementById('isbn').value.trim() || null,
+            publication_date: document.getElementById('publication_date').value || null,
+            description: document.getElementById('description').value.trim() || null
+        };
     }
     
     // Diese Funktion wird beim Laden der Seite aufgerufen
     document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM geladen, initialisiere Event-Listener");
-        
         // Laden der Bücher
         fetchBooks();
         
-        // Event-Listener für das Hinzufügen eines Buches (als Fallback)
+        // Event-Listener für das Hinzufügen eines Buches
         document.getElementById('add-book-btn').addEventListener('click', function() {
-            console.log("Button wurde geklickt über Event-Listener");
-            showBookForm();
+            showBookForm('add');
         });
         
         // Event-Listener für das Abbrechen des Formulars
@@ -93,16 +155,30 @@
         });
         
         // Event-Listener für das Absenden des Formulars
-        document.getElementById('new-book-form').addEventListener('submit', function(e) {
+        document.getElementById('book-form-element').addEventListener('submit', function(e) {
             e.preventDefault();
-            addBook();
+            
+            // Formular validieren
+            if (!validateBookForm()) {
+                return;
+            }
+            
+            // Je nach Modus die passende Funktion aufrufen
+            if (formMode === 'add') {
+                addBook();
+            } else {
+                updateBook();
+            }
         });
     });
     
     // Bücher vom Server abrufen
     async function fetchBooks() {
         try {
-            console.log("Rufe Bücher vom Server ab");
+            // Loading-Nachricht anzeigen
+            document.getElementById('loading-message').style.display = 'block';
+            document.getElementById('books-table').classList.add('hidden');
+            
             const token = localStorage.getItem('access_token');
             
             if (!token) {
@@ -120,10 +196,15 @@
             }
             
             const books = await response.json();
+            
+            // Loading-Nachricht ausblenden
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('books-table').classList.remove('hidden');
+            
             displayBooks(books);
         } catch (error) {
             console.error('Fehler:', error);
-            alert(error.message);
+            document.getElementById('loading-message').textContent = error.message;
         }
     }
     
@@ -158,7 +239,7 @@
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const bookId = this.getAttribute('data-id');
-                editBook(bookId);
+                loadBookForEdit(bookId);
             });
         });
         
@@ -174,23 +255,19 @@
     
     // Neues Buch hinzufügen
     async function addBook() {
-        const form = document.getElementById('new-book-form');
-        const bookData = {
-            title: form.title.value,
-            author: form.author.value,
-            isbn: form.isbn.value || null,
-            publication_date: form.publication_date.value || null,
-            description: form.description.value || null
-        };
-        
-        console.log("Versuche Buch hinzuzufügen:", bookData);
-        
         try {
+            const bookData = getBookFormData();
+            
             // Token aus localStorage holen
             const token = localStorage.getItem('access_token');
             if (!token) {
                 throw new Error('Nicht angemeldet. Bitte melde dich an.');
             }
+            
+            // Speichern-Button deaktivieren, um Mehrfachklicks zu vermeiden
+            const saveButton = document.getElementById('save-btn');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Wird gespeichert...';
             
             const response = await fetch('/api/v1/books', {
                 method: 'POST',
@@ -201,19 +278,104 @@
                 body: JSON.stringify(bookData)
             });
             
+            // Speichern-Button wieder aktivieren
+            saveButton.disabled = false;
+            saveButton.textContent = 'Speichern';
+            
             if (!response.ok) {
                 // Versuche, eine detaillierte Fehlermeldung zu bekommen
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || `Fehler beim Hinzufügen des Buches. Status: ${response.status}`);
             }
             
-            form.reset();
             hideBookForm();
             fetchBooks();
             alert('Buch erfolgreich hinzugefügt!');
         } catch (error) {
             console.error('Fehler:', error);
+            document.getElementById('form-error').textContent = error.message;
+        }
+    }
+    
+    // Buch für die Bearbeitung laden
+    async function loadBookForEdit(id) {
+        try {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
+            const response = await fetch(`/api/v1/books/${id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Fehler beim Abrufen des Buches.');
+            }
+            
+            const book = await response.json();
+            
+            // Formular im Bearbeitungsmodus anzeigen
+            showBookForm('edit');
+            
+            // Formular mit Buchdaten befüllen
+            document.getElementById('book-id').value = book.id;
+            document.getElementById('title').value = book.title || '';
+            document.getElementById('author').value = book.author || '';
+            document.getElementById('isbn').value = book.isbn || '';
+            document.getElementById('publication_date').value = book.publication_date || '';
+            document.getElementById('description').value = book.description || '';
+            
+        } catch (error) {
+            console.error('Fehler:', error);
             alert(error.message);
+        }
+    }
+    
+    // Buch aktualisieren
+    async function updateBook() {
+        try {
+            const bookId = document.getElementById('book-id').value;
+            const bookData = getBookFormData();
+            
+            // Token aus localStorage holen
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                throw new Error('Nicht angemeldet. Bitte melde dich an.');
+            }
+            
+            // Speichern-Button deaktivieren, um Mehrfachklicks zu vermeiden
+            const saveButton = document.getElementById('save-btn');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Wird gespeichert...';
+            
+            const response = await fetch(`/api/v1/books/${bookId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(bookData)
+            });
+            
+            // Speichern-Button wieder aktivieren
+            saveButton.disabled = false;
+            saveButton.textContent = 'Speichern';
+            
+            if (!response.ok) {
+                // Versuche, eine detaillierte Fehlermeldung zu bekommen
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Fehler beim Aktualisieren des Buches. Status: ${response.status}`);
+            }
+            
+            hideBookForm();
+            fetchBooks();
+            alert('Buch erfolgreich aktualisiert!');
+        } catch (error) {
+            console.error('Fehler:', error);
+            document.getElementById('form-error').textContent = error.message;
         }
     }
     
@@ -238,34 +400,6 @@
             
             fetchBooks();
             alert('Buch erfolgreich gelöscht!');
-        } catch (error) {
-            console.error('Fehler:', error);
-            alert(error.message);
-        }
-    }
-    
-    // Buch bearbeiten
-    async function editBook(id) {
-        try {
-            const token = localStorage.getItem('access_token');
-            if (!token) {
-                throw new Error('Nicht angemeldet. Bitte melde dich an.');
-            }
-            
-            const response = await fetch(`/api/v1/books/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Fehler beim Abrufen des Buches.');
-            }
-            
-            const book = await response.json();
-            
-            // Hier würde man ein Edit-Formular anzeigen und mit den Buchdaten befüllen
-            alert('Bearbeiten-Funktion noch nicht implementiert.');
         } catch (error) {
             console.error('Fehler:', error);
             alert(error.message);

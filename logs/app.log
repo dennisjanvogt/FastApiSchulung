@@ -16,3 +16,12 @@ Traceback (most recent call last):
     version = _bcrypt.__about__.__version__
               ^^^^^^^^^^^^^^^^^
 AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-05-07 22:14:27,557 [INFO] Anwendung wird heruntergefahren...
+2025-05-07 22:14:28,711 [INFO] Starte Anwendung...
+2025-05-07 22:14:28,715 [INFO] Datenbank initialisiert
+2025-05-07 22:15:33,003 [WARNING] (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/Users/dennisjanvogt/Projekte/Youtube/FastApiSchulung/venv/lib/python3.12/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'

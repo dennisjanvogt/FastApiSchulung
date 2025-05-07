@@ -91,6 +91,13 @@ nav ul li a:hover {
     resize: vertical;
 }
 
+.form-hint {
+    display: block;
+    color: #777;
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+}
+
 .form-actions {
     display: flex;
     justify-content: space-between;
@@ -109,6 +116,11 @@ nav ul li a:hover {
 
 .form-actions button:hover {
     background-color: #555;
+}
+
+.form-actions button:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
 }
 
 .form-message {
@@ -172,14 +184,16 @@ button:hover {
     background-color: #c0392b;
 }
 
-/* Hilfeklassen - Wichtig: display: none !important verwenden */
-.hidden {
-    display: none !important;
+/* Loading-Meldung */
+#loading-message {
+    text-align: center;
+    margin: 2rem 0;
+    color: #666;
 }
 
-/* Explizite Stile für das Buch-Formular, wenn es sichtbar ist */
-.book-form:not(.hidden) {
-    display: block;
+/* Hilfeklassen */
+.hidden {
+    display: none !important;
 }
 
 /* Footer */

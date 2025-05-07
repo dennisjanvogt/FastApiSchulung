@@ -55,6 +55,42 @@ function logout() {
     window.location.href = '/login';
 }
 
+// Formular-Validierung (Allgemein)
+function validateForm(form, rules) {
+    for (const field in rules) {
+        const value = form[field].value.trim();
+        const rule = rules[field];
+        
+        if (rule.required && !value) {
+            return { valid: false, message: `${rule.label} ist erforderlich.` };
+        }
+        
+        if (rule.minLength && value.length < rule.minLength) {
+            return { valid: false, message: `${rule.label} muss mindestens ${rule.minLength} Zeichen haben.` };
+        }
+        
+        if (rule.pattern && !rule.pattern.test(value)) {
+            return { valid: false, message: rule.message || `${rule.label} hat ein ungültiges Format.` };
+        }
+    }
+    
+    return { valid: true };
+}
+
+// Daten aus Formular sammeln
+function getFormData(form, fields) {
+    const data = {};
+    
+    fields.forEach(field => {
+        const element = form[field];
+        if (element) {
+            data[field] = element.value.trim() || null;
+        }
+    });
+    
+    return data;
+}
+
 // Prüfen, ob der Benutzer auf geschützte Seiten zugreifen darf
 document.addEventListener('DOMContentLoaded', function() {
     // Logout-Link
